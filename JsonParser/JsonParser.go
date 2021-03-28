@@ -1,6 +1,9 @@
 package JsonParser
 
-import "errors"
+import (
+	"errors"
+	"strconv"
+)
 
 type JsonValueType int32
 const (
@@ -10,7 +13,6 @@ const (
 	JSON_TYPE_STRING JsonValueType = 3
 	JSON_TYPE_NUMBER JsonValueType = 4
 	JSON_TYPE_ARRAY JsonValueType = 5
-
 )
 
 type JsonParserCtx struct {
@@ -56,10 +58,8 @@ func (self *JsonParserCtx) GetOneToken() (*JsonToken, error){
 }
 
 
-
-
 type JsonKey struct {
-	keyName string
+	keyName *string
 }
 
 type JsonValue struct {
@@ -67,22 +67,82 @@ type JsonValue struct {
 	value interface{}
 }
 
-type TokensMap struct {
-	tokensMap map[JsonKey]JsonValue
+
+//
+func ParseJsonKey(ctx *JsonParserCtx)(*JsonKey, error) {
+	keyStr, err :=ParseJsonString(ctx)
+	if err == nil {
+		return &JsonKey{keyStr}, nil
+	}
+	return nil, err
 }
 
-func InitTokensMap() *TokensMap {
-	var jsonMap TokensMap
-	jsonMap.tokensMap = make(map[JsonKey]JsonValue)
-	return &jsonMap
+func ParsePostJsonString(ctx *JsonParserCtx)(*string, error) {
+	var key string
+	t, e := ctx.GetOneToken()
+	if e != nil || t.tokenType != JSON_TOKEN_STRING {
+		return  nil, errors.New("Bad Format, Line=%d, column=%d")  //todo 错误处理
+	}
+
+	key = t.tokenValue.(string)
+
+	t, e = ctx.GetOneToken()
+	if e != nil || t.tokenType != JSON_TOKEN_QUOT {
+		return  nil, errors.New("Bad Format, Line=%d, column=%d")  //todo 错误处理
+	}
+	return &key, nil
 }
+
+func ParseJsonString(ctx *JsonParserCtx)(*string, error) {
+	t, e := ctx.GetOneToken()
+	if e!= nil || t.tokenType != JSON_TOKEN_QUOT {
+		return  nil, errors.New("Bad Format, Line=%d, column=%d")  //todo 错误处理
+	}
+	return ParsePostJsonString(ctx)
+}
+
+func ParseJsonNumber(ctx *JsonParserCtx)(int, error) {
+	t, e := ctx.GetOneToken()
+	if e != nil || t.tokenType != JSON_TOKEN_NUMBER {
+		return 0, errors.New("Not a number")
+	}
+	return strconv.Atoi(t.tokenValue.(string))
+}
+
 
 // Obj --> { "string" :
-func ParseJsonObject(ctx *JsonParserCtx) *TokensMap {
+func ParseJsonObject(ctx *JsonParserCtx) (*TokensMap, error) {
+	var key *JsonKey
+	var value JsonValue
+
 	t,e := ctx.GetOneToken()
 	if e !=nil || t.tokenType != JSON_LEFT_CURLY_BRACKET {
-
+		return  nil, errors.New("Bad Format, Line=%d, column=%d")  //todo 错误处理
 	}
+
+	key, err :=ParseJsonKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	t, e= ctx.GetOneToken()
+	if e!=nil {
+		if t.tokenType == JSON_TOKEN_QUOT {
+			if keyStr,e := ParsePostJsonString(ctx); e== nil {
+				value.valueType = JSON_TYPE_STRING
+				value.value  = keyStr
+			} else if t.tokenType == JSON_TOKEN_NUMBER {
+				if keyNum,e := ParseJsonNumber(ctx); e== nil {
+					value.valueType = JSON_TYPE_NUMBER
+					value.value = keyNum
+				}
+			} else if t.tokenType == JSON_LEFT_CURLY_BRACKET; e == nil {
+
+			}
+
+		}
+	}
+
 }
 
 
