@@ -110,23 +110,9 @@ func ParseJsonNumber(ctx *JsonParserCtx)(int, error) {
 }
 
 
-// Obj --> { "string" :
-func ParseJsonObject(ctx *JsonParserCtx) (*TokensMap, error) {
-	var key *JsonKey
+func ParseJsonValue(ctx *JsonParserCtx) (*JsonValue, error) {
 	var value JsonValue
-
-	t,e := ctx.GetOneToken()
-	if e !=nil || t.tokenType != JSON_LEFT_CURLY_BRACKET {
-		return  nil, errors.New("Bad Format, Line=%d, column=%d")  //todo 错误处理
-	}
-
-	key, err :=ParseJsonKey(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	t, e= ctx.GetOneToken()
-	if e!=nil {
+	if t, e:= ctx.GetOneToken();e!=nil {
 		if t.tokenType == JSON_TOKEN_QUOT {
 			if keyStr,e := ParsePostJsonString(ctx); e== nil {
 				value.valueType = JSON_TYPE_STRING
@@ -136,13 +122,35 @@ func ParseJsonObject(ctx *JsonParserCtx) (*TokensMap, error) {
 					value.valueType = JSON_TYPE_NUMBER
 					value.value = keyNum
 				}
-			} else if t.tokenType == JSON_LEFT_CURLY_BRACKET; e == nil {
+			} else if t.tokenType == JSON_TOKEN_NUMBER; e == nil {
 
 			}
 
 		}
 	}
+}
 
+func ParseJsonPostJsonObject(ctx *JsonParserCtx)(*JsonKey, *JsonValue, error) {
+	//Parse key
+	key, err :=ParseJsonKey(ctx)
+	if err != nil {
+		return nil, nil,err
+	}
+	val, err := ParseJsonValue(ctx)
+	if err != nil {
+		return nil, nil,err
+	}
+	return key, val, nil
+}
+
+
+// Obj --> { "string" :
+func ParseJsonObject(ctx *JsonParserCtx) (*JsonKey,*JsonValue, error) {
+	t,e := ctx.GetOneToken()
+	if e !=nil || t.tokenType != JSON_TOKEN_LEFT_CURLY_BRACKET {
+		return  nil,nil, errors.New("Bad Format, Line=%d, column=%d")  //todo 错误处理
+	}
+	return ParseJsonPostJsonObject(ctx)
 }
 
 
@@ -150,7 +158,10 @@ func ParseJson(jsonStr *string) *TokensMap {
 	jsonMap := InitTokensMap()
 	ctx := InitJsonParseCtx(jsonStr)
 	for ;!ctx.IsCtxEnd(); {
+		t,e := ctx.GetOneToken()
+		if e !=nil || t.tokenType == JSON_TOKEN_LEFT_CURLY_BRACKET {
 
+		}
 	}
 
 
